@@ -11,12 +11,15 @@ define(['backbone','underscore'], function(Backbone, undef) {
 			 */
 			this.proxies = {};
 
-			var _this = this,
-				proxies = _.isArray(proxies) ? proxies : [proxies];
+			var _this = this;
 
-			_.each(proxies, function(p) {
-				_this.proxy(p.model, p.attributes, p.processor);
-			});
+			if (proxies) {
+				var proxies = _.isArray(proxies) ? proxies : [proxies];
+
+				_.each(proxies, function(p) {
+					_this.proxy(p.model, p.attributes, p.processor);
+				});
+			}
 		},
 
 		// define proxies
