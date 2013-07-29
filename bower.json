@@ -1,15 +1,13 @@
 {
-	"name": "proxymodel",
-	"version": "0.0.1",
-	"dependencies": {
-		"underscore": "latest",
-		"backbone": "latest",
-		"requirejs": "latest"
-	},
-
-	"devDependencies": {
-		"qunit": "latest"
-	},
-
-	"main": "proxymodel.js"
+  "name": "proxymodel",
+  "version": "0.0.1",
+  "dependencies": {
+    "underscore": "latest",
+    "backbone": "latest",
+    "requirejs": "latest"
+  },
+  "devDependencies": {
+    "qunit": "latest"
+  },
+  "main": "proxymodel.js"
 }

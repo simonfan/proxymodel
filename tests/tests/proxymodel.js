@@ -1,15 +1,15 @@
-define(['proxymodel','backbone'], function(ProxyModel, Backbone) {
+define(['proxymodel','backbone','underscore','_.mixins'], function(ProxyModel, Backbone, undef, undef) {
 
 return function() {
 	
 	test('proxy simple proxy', function() {
-		var f1 = new Backbone.Model({
+		window.f1 = new Backbone.Model({
 			p1: 'bananas',
 			p2: 'apples',
 			p3: 'watermelons',
 		});
 
-		var proxiedFilter = new ProxyModel(
+		window.proxiedFilter = new ProxyModel(
 			{ p1: 'anything-but-bananas' },
 			// proxy definer:
 			{
@@ -98,6 +98,106 @@ return function() {
 			p4: f2.get('p4'),
 		//	p5: undefined (not proxied neither set on the proxied model)
 		}, 'final');
+	});
+
+	test('proxy all attributes', function() {
+
+		var f1 = new Backbone.Model({
+			p1: 'bananas',
+			p2: 'apples',
+			p3: 'watermelons',
+		});
+
+		var proxiedFilter = new ProxyModel(
+			{
+				p1: 'anything-but-bananas',
+				p4: 'mine!'
+			},
+			// proxy definer:
+			{
+				model: f1
+			}
+		);
+
+		// expect the proxiedFilter p2 to be equal to f1's p2
+		equal(proxiedFilter.get('p1'), f1.get('p1'));
+		equal(proxiedFilter.get('p2'), f1.get('p2'));
+		equal(proxiedFilter.get('p3'), f1.get('p3'));
+
+		equal(proxiedFilter.get('p4'), 'mine!');
+
+		// set values on the f1
+		f1.set({
+			p1: 'modified-p1',
+			p2: 'modified-p2',
+			p3: 'modified-p3'
+		});
+
+		equal(proxiedFilter.get('p1'), f1.get('p1'));
+		equal(proxiedFilter.get('p2'), f1.get('p2'));
+		equal(proxiedFilter.get('p3'), f1.get('p3'));
+
+		equal(proxiedFilter.get('p4'), 'mine!');
+	});
+
+	test('unproxy', function() {
+
+		var f1 = new Backbone.Model({
+			p1: 'bananas',
+			p2: 'apples',
+			p3: 'watermelons',
+		});
+
+		var proxiedFilter = new ProxyModel(
+			{
+				p1: 'anything-but-bananas',
+				p4: 'mine!'
+			},
+			// proxy definer:
+			{
+				model: f1
+			}
+		);
+
+		// expect the proxiedFilter p2 to be equal to f1's p2
+		equal(proxiedFilter.get('p1'), f1.get('p1'));
+		equal(proxiedFilter.get('p2'), f1.get('p2'));
+		equal(proxiedFilter.get('p3'), f1.get('p3'));
+
+		equal(proxiedFilter.get('p4'), 'mine!');
+
+		// set values on the f1
+		f1.set({
+			p1: 'modified-p1',
+			p2: 'modified-p2',
+			p3: 'modified-p3'
+		});
+
+		equal(proxiedFilter.get('p1'), f1.get('p1'));
+		equal(proxiedFilter.get('p2'), f1.get('p2'));
+		equal(proxiedFilter.get('p3'), f1.get('p3'));
+
+		equal(proxiedFilter.get('p4'), 'mine!');
+
+
+
+		// unproxy
+		proxiedFilter.unproxy(f1, ['p1','p3']);
+
+		// set values on f1
+		f1.set({
+			p1: 'modified-p1-again',
+			p2: 'modified-p2-again',
+			p3: 'modified-p3-again'
+		});
+
+		deepEqual(proxiedFilter.attributes, {
+			p1: 'modified-p1',
+			p2: f1.get('p2'),
+			p3: 'modified-p3',
+			p4: 'mine!',
+		}, 'expect p1 and p3 to remain unaltered as they were unproxied')
+
 	});
 
 }

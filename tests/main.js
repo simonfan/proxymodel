@@ -7,6 +7,8 @@ require.config({
 		'underscore': 'components/underscore/underscore',
 		'backbone': 'components/backbone/backbone',
 
+		'_.mixins': 'components/_.mixins/_.mixins',
+
 		// the module files go here
 		'proxymodel': '../proxymodel',
 
