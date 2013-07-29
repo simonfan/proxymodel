@@ -1,0 +1,14 @@
+{
+	"name": "Boilerplate Component",
+	"version": "0.0.1",
+	"dependencies": {
+		"jquery": "lastest",
+		"underscore": "latest",
+		"backbone": "latest",
+		"requirejs": "latest",
+
+	    "qunit": "latest"
+	},
+
+	"main": "component.js"
+}
