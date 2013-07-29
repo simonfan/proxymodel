@@ -17,7 +17,7 @@ require.config({
 		'tests-main': 'tests',	// the main file for tests
 
 		// other tests go here
-		'example-tests': 'tests/example-tests',
+		'proxymodel-tests': 'tests/proxymodel',
 	},
 	shim: {
 		'backbone': {

@@ -1,10 +1,24 @@
 define(['backbone','underscore'], function(Backbone, undef) {
 	var ProxyModel = Backbone.ProxyModel = Backbone.Model.extend({
-		initialize: function(attributes, options) {
-			options = options || {};
+		initialize: function(attributes, origins, options) {
+			/**
+			 * attributes: the Backbone Model's attributes
+			 * origins: origins from which to proxy attributes
+			 * options: 
+			 * 
+			 */ 
+			var _this = this,
+				origins = _.isArray(origins) ? origins : [origins],
+				options = options || {};
+
+			// loop through the origins passed
+			// and proxy each one of them.
+			_.each(origins, function(o, index) {
+				_this.proxy(o.model, o.attributes, o.processor)
+			});
 
 			// locked properties
-			this.locked = options.locked || [];
+			this.locked = [];
 		},
 
 		proxy: function(model, attributes, processor) {
@@ -97,4 +111,6 @@ define(['backbone','underscore'], function(Backbone, undef) {
 			return this;
 		}
 	});
+	
+	return ProxyModel;
 });
