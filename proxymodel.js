@@ -1,4 +1,4 @@
-define(['backbone','underscore'], function(Backbone, undef) {
+define(['backbone','underscore','_.mixins'], function(Backbone, undef, undef) {
 	var ProxyModel = Backbone.ProxyModel = Backbone.Model.extend({
 		initialize: function(attributes, proxies) {
 			/**
@@ -6,31 +6,32 @@ define(['backbone','underscore'], function(Backbone, undef) {
 			 * proxies: proxies from which to proxy attributes
 			 */ 
 
-			/**
-			 * Save proxy options by cid (Backbone.Model client id, specified in docs).
-			 */
-			this.proxies = {};
-
 			var _this = this;
 
 			if (proxies) {
 				var proxies = _.isArray(proxies) ? proxies : [proxies];
 
 				_.each(proxies, function(p) {
-					_this.proxy(p.model, p.attributes, p.processor);
+					_this.proxy(p.model, p.attributes, p.events, p.processor);
 				});
 			}
 		},
 
 		// define proxies
-		proxy: function(model, attributes, processor) {
+		proxy: function(proxy) {
 			/**
-			 * Model: The Backbone Model to be proxied from
-			 * Attributes:
-			 	- array: list of attributes to be proxied
-			 	- string: single attribute to be proxied (transform into array)
-			 	- undefined, false, null: all current attributes from the model.
-			 * Processor: the function that will process the change
+			 * Proxy:
+			 *		Model: The Backbone Model to be proxied from
+			 *		Attributes:
+			 			- array: list of attributes to be proxied
+			 			- string: single attribute to be proxied (transform into array)
+			 			- undefined, false, null: all current attributes from the model.
+			 		Options: attribute setting options.
+			 		Events: 
+			 			- array: list of events to be proxied
+			 			- string: single event to be proxied
+			 			- undefined, false, null: no events proxied.
+			 * 		Processor: the function that will process the change
 			 */
 
 			var _this = this,
@@ -47,7 +48,8 @@ define(['backbone','underscore'], function(Backbone, undef) {
 			// save the proxy options
 			this.proxies[ model.cid ] = {
 				attributes: attributes,
-				processor: processor
+				processor: processor,
+				events: events,
 			};
 
 			// copy all the proxied attributes from the model
@@ -56,7 +58,64 @@ define(['backbone','underscore'], function(Backbone, undef) {
 			return this;
 		},
 
-		unproxy: function(model, unproxiedAttributes) {
+		/**
+		 * getset proxies
+		 */
+		_proxy: function(cid, proxy) {
+			/**
+			 * Save proxy options by cid (Backbone.Model client id, specified in docs).
+			 */
+			return _.getset({
+				context: this,
+				obj: '_proxies',
+				name: cid,
+				value: proxy,
+				options: {
+					// function to be called when any proxy is set.
+					iterate: function(cid, proxy) {
+
+						var _this = this,
+							attributes = proxy.attributes ? proxy.attributes : _.keys(model.attributes);
+
+						// transform attributes into array.
+						attributes = _.isArray(attributes) ? attributes : [ attributes ];
+						// listen to change:attribute events
+						_.each(attributes, function(attr) {
+							// listen to events.
+							_this.listenTo(model, 'change:' + attr, _this._modelChange);
+						});
+
+						// save the proxy options
+						this.proxies[ model.cid ] = {
+							attributes: attributes,
+							processor: processor,
+							events: events,
+						};
+
+						// copy all the proxied attributes from the model
+						this._modelChange(model);
+
+					}
+				}
+			});
+		},
+
+		unproxy: function(proxy) {
+			/**
+			 * Proxy:
+			 		Model:
+			 			- object: backbone model
+			 			- string: cid
+			 		Attributes:
+			 			- array: attributes to be unproxied
+			 			- string: single attribute to be unproxied
+						- undefined, null, false: unproxy all attributes
+					Events: 
+						- array: events to be unproxied
+						- string: single event to be unproxied
+						- undefined, null, false: unproxy all events.
+			 */
+
 			var proxy = this.proxies[ model.cid ],
 				unproxiedAttributes = unproxiedAttributes ? unproxiedAttributes : proxy.attributes;
 
