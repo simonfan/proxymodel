@@ -217,8 +217,6 @@ define(['backbone','underscore'], function(Backbone, undef) {
 
 			_.each(proxiedAttributes, function(attr) {
 
-				console.log(attr)
-
 				// get the attribute's value from the model.
 				var value = model.get(attr);
 
