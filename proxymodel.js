@@ -224,7 +224,7 @@ define(['backbone','underscore'], function(Backbone, undef) {
 					// if there is a processor, only set the value if it returns 
 					// something. Otherwise, assume that there should be no
 					// setting at all.
-					value = processor.call(this, value, attr);
+					value = processor.call(_this, value, attr);
 					if (typeof value !== 'undefined') {
 						_this.set(attr, value);
 					}
