@@ -1,4 +1,4 @@
-define(['backbone','underscore','_.mixins'], function(Backbone, undef, undef) {
+define(['backbone','underscore'], function(Backbone, undef) {
 	var ProxyModel = Backbone.ProxyModel = Backbone.Model.extend({
 		initialize: function(attributes, proxies) {
 			/**
@@ -111,7 +111,7 @@ define(['backbone','underscore','_.mixins'], function(Backbone, undef, undef) {
 			// listen to the events
 			_.each(events, function(evt) {
 				_this.listenTo(model, evt, function() {
-					var args = _.args(arguments);
+					var args = Array.prototype.splice.call(arguments, 0);
 
 					// add the evt to the argument list
 					args.unshift(evt);
