@@ -8,11 +8,16 @@ define(['backbone','underscore','_.mixins'], function(Backbone, undef, undef) {
 
 			var _this = this;
 
+			/**
+			 * save proxies by Backbone Model cid.
+			 */
+			this._proxies = {};
+
 			if (proxies) {
 				var proxies = _.isArray(proxies) ? proxies : [proxies];
 
-				_.each(proxies, function(p) {
-					_this.proxy(p.model, p.attributes, p.events, p.processor);
+				_.each(proxies, function(proxy) {
+					_this.proxy(proxy);
 				});
 			}
 		},
@@ -34,78 +39,94 @@ define(['backbone','underscore','_.mixins'], function(Backbone, undef, undef) {
 			 * 		Processor: the function that will process the change
 			 */
 
+
 			var _this = this,
-				attributes = attributes ? attributes : _.keys(model.attributes);
+				model = proxy.model,
+				attributes = proxy.attributes,
+				events = proxy.events,
+				options = proxy.options,
+				processor = proxy.processor;
 
-			// transform attributes into array.
-			attributes = _.isArray(attributes) ? attributes : [ attributes ];
-			// listen to change:attribute events
-			_.each(attributes, function(attr) {
-				// listen to events.
-				_this.listenTo(model, 'change:' + attr, _this._modelChange);
-			});
+			// normalize attributes
+			attributes = attributes ? attributes : _.keys(model.attributes);
+			// force attributes into array
+			proxy.attributes = attributes = _.isArray(attributes) ? attributes : [ attributes ];
 
-			// save the proxy options
-			this.proxies[ model.cid ] = {
-				attributes: attributes,
-				processor: processor,
-				events: events,
-			};
+			// normalize events
+			if (events) {
+				// transform events into NON EMPTY array
+				proxy.events = events = (_.isArray(events) && events.length > 0) ? events : [ events ];
+			}
 
-			// copy all the proxied attributes from the model
-			this._modelChange(model);
+			// save the proxy
+			this._getsetProxy(model.cid, proxy);
+
+			// setup attribute proxy
+			this._setAttrProxy(model, attributes, options, processor);
+
+			// setup event proxy
+			this._setEventProxy(model, events);
+
 
 			return this;
 		},
 
 		/**
-		 * getset proxies
+		 * gets and sets proxies on this._proxies object
 		 */
-		_proxy: function(cid, proxy) {
-			/**
-			 * Save proxy options by cid (Backbone.Model client id, specified in docs).
-			 */
-			return _.getset({
-				context: this,
-				obj: '_proxies',
-				name: cid,
-				value: proxy,
-				options: {
-					// function to be called when any proxy is set.
-					iterate: function(cid, proxy) {
+		_getsetProxy: function(cid, proxy) {
+			if (!proxy) {
+				// getter
+				return this._proxies[ cid ];
+			} else {
+				// setter
+				this._proxies[ cid ] = proxy;
+			}
+		},
 
-						var _this = this,
-							attributes = proxy.attributes ? proxy.attributes : _.keys(model.attributes);
+		/**
+		 * Sets an attribute proxy: 
+		 	- listen to the change events
+		 */
+		_setAttrProxy: function(model, attributes, settingOptions, processor) {
+			var _this = this;
 
-						// transform attributes into array.
-						attributes = _.isArray(attributes) ? attributes : [ attributes ];
-						// listen to change:attribute events
-						_.each(attributes, function(attr) {
-							// listen to events.
-							_this.listenTo(model, 'change:' + attr, _this._modelChange);
-						});
+			// listen to change:attribute events
+			_.each(attributes, function(attr) {
+				// listen to events.
+				_this.listenTo(model, 'change:' + attr, _this._proxyChange);
+			});
 
-						// save the proxy options
-						this.proxies[ model.cid ] = {
-							attributes: attributes,
-							processor: processor,
-							events: events,
-						};
+			// copy the model's attributes
+			_this._proxyChange(model);
+		},
 
-						// copy all the proxied attributes from the model
-						this._modelChange(model);
+		/**
+		 * Sets up an event proxy:
+		 	- listen to specified events
+		 */
+		_setEventProxy: function(model, events) {
+			var _this = this;
 
-					}
-				}
+			// listen to the events
+			_.each(events, function(evt) {
+				_this.listenTo(model, evt, function() {
+					var args = _.args(arguments);
+
+					// add the evt to the argument list
+					args.unshift(evt);
+
+					// emit the event on this model
+					_this.trigger.apply(_this, args);
+				});
 			});
 		},
 
-		unproxy: function(proxy) {
+		unproxy: function(options) {
 			/**
 			 * Proxy:
 			 		Model:
 			 			- object: backbone model
-			 			- string: cid
 			 		Attributes:
 			 			- array: attributes to be unproxied
 			 			- string: single attribute to be unproxied
@@ -116,32 +137,88 @@ define(['backbone','underscore','_.mixins'], function(Backbone, undef, undef) {
 						- undefined, null, false: unproxy all events.
 			 */
 
-			var proxy = this.proxies[ model.cid ],
-				unproxiedAttributes = unproxiedAttributes ? unproxiedAttributes : proxy.attributes;
+			var proxy = this._getsetProxy(options.model.cid),
+				unproxyAttr = options.attributes ? options.attributes : proxy.attributes,
+				unproxyEvts = options.events ? options.events : proxy.events;
 
-			unproxiedAttributes = _.isArray(unproxiedAttributes) ? unproxiedAttributes : [unproxiedAttributes];
 
-			// remove event listeners.			
-			var _this = this;
-			_.each(unproxiedAttributes, function(attrname, index) {
-				// stop listening to events 
-				_this.stopListening(model, 'change:' + attrname, _this._modelChange);
-			});
+			// transform attributes into array.
+			unproxyAttr = _.isArray(unproxyAttr) ? unproxyAttr : [ unproxyAttr ];
+			// unproxy attributes
+			this._unsetAttrProxy(proxy, unproxyAttr);
 
-			// remove the given attributes from the ones being proxied
-			proxy.attributes = _.difference(proxy.attributes, unproxiedAttributes);
+
+			if (unproxyEvts) {
+				// transform events into NON EMPTY array
+				unproxyEvts = (_.isArray(unproxyEvts) && unproxyEvts.length > 0) ? unproxyEvts : [ unproxyEvts ];
+
+				// unproxy events
+				this._unsetEventProxy(proxy, unproxyEvts);
+			}
 
 			return this;
 		},
 
-		// handles change events on the proxied model
-		_modelChange: function(model) {
+		/**
+		 * unsets the specified attribute proxies
+		 */
+		_unsetAttrProxy: function(proxy, attributes) {
+			/**
+			 * Proxy: the proxy object saved in _proxies
+			 * Attributes: array of attributes to be unproxied
+			 */
 			var _this = this,
-				proxy = this.proxies[ model.cid ],
+				model = proxy.model;
+
+			// stop listening to change:attribute events
+			_.each(attributes, function(attr) {
+				// stop listening to events 
+				_this.stopListening(model, 'change:' + attr, _this._proxyChange);
+			});
+
+			// remove the given attributes from the ones being proxied
+			proxy.attributes = _.difference(proxy.attributes, attributes);
+		},
+
+		/**
+		 * unsets the specified event proxies.
+		 */
+		_unsetEventProxy: function(proxy, events) {
+			/**
+			 * Proxy: the proxy object saved in _proxies
+			 * Events: array of attributes to be unproxied
+			 */
+			var _this = this,
+				model = proxy.model;
+
+			// stop listening events
+			_.each(events, function(evt) {
+
+				/**
+				 * Here it is impossible to "unListen" to only the proxy events, as 
+				 * we need to know the event name..
+				 */
+				_this.stopListening(model, evt);
+			});
+
+			// remove the given events from the ones being proxied
+			proxy.events = _.difference(proxy.events, events);
+		},
+
+		/**
+		 * This is the event handler that deals with changes on the proxied model.
+		 */
+		_proxyChange: function(model) {
+			var _this = this,
+				proxy = this._getsetProxy(model.cid),
 				proxiedAttributes = proxy.attributes,
+				options = proxy.options,
 				processor = proxy.processor;
 
 			_.each(proxiedAttributes, function(attr) {
+
+				console.log(attr)
+
 				// get the attribute's value from the model.
 				var value = model.get(attr);
 

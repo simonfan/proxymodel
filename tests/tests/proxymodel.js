@@ -1,4 +1,4 @@
-define(['proxymodel','backbone','underscore','_.mixins'], function(ProxyModel, Backbone, undef, undef) {
+	define(['proxymodel','backbone','underscore','_.mixins'], function(ProxyModel, Backbone, undef, undef) {
 
 return function() {
 	
@@ -148,7 +148,7 @@ return function() {
 			p3: 'watermelons',
 		});
 
-		var proxiedFilter = new ProxyModel(
+		window.proxiedFilter = new ProxyModel(
 			{
 				p1: 'anything-but-bananas',
 				p4: 'mine!'
@@ -182,7 +182,12 @@ return function() {
 
 
 		// unproxy
-		proxiedFilter.unproxy(f1, ['p1','p3']);
+		proxiedFilter.unproxy({
+			model: f1,
+			attributes: ['p1','p3']
+		});
+
+		console.log('unproxy')
 
 		// set values on f1
 		f1.set({
@@ -200,5 +205,46 @@ return function() {
 
 	});
 
+
+
+	test('proxy events', function() {
+		var control = {},
+			o1 = new Backbone.Model(),
+			proxy = new ProxyModel({}, {
+				model: o1,
+				events: ['lalala'],
+			});
+
+		// set eevent listener on proxy
+		proxy.on('lalala', function(arg1, arg2) {
+			control.lalala = {
+				arg1: arg1,
+				arg2: arg2,
+			};
+		});
+
+		// trigger event on o1;
+		o1.trigger('lalala', 'argument 1', 'argument 2');
+
+
+		deepEqual(control.lalala, {
+			arg1: 'argument 1',
+			arg2: 'argument 2'
+		}, 'expect events to have been correcly proxied.');
+
+		// unproxy
+		proxy.unproxy({
+			model: o1,
+		});
+
+		// emit event
+		o1.trigger('lalala', 'changed 1', 'changed 2');
+
+
+		deepEqual(control.lalala, {
+			arg1: 'argument 1',
+			arg2: 'argument 2'
+		}, 'no proxy anymore');
+	});
 }
 });
